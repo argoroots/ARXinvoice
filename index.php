@@ -37,7 +37,7 @@
                         $invoice['invoice']['tax'] += ($sum * TAX);
                     }
                 }
-				$invoice['invoice']['total'] = ($invoice['invoice']['sum'] + $invoice['invoice']['tax']);
+                $invoice['invoice']['total'] = ($invoice['invoice']['sum'] + $invoice['invoice']['tax']);
                 $invoice['invoice']['payment_method'] = $_GET['payment_method'];
                 $id = save_invoice($invoice, $action[1]);
                 header('Location: '. $url . $id);
@@ -195,6 +195,10 @@
                 padding: 0px;
                 border-bottom: 1px solid #B8B9B9;
             }
+            table {
+                border-spacing: 0px;
+                border-collapse: separate;
+            }
             td input {
                 border: none;
                 width: 100%;
@@ -211,7 +215,7 @@
                 display:inline;
             }
         </style>
-         <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
     </head>
     <body>
         <div id="wrap">
@@ -220,7 +224,7 @@
                     ARVE
                 </h1>
                 <div id="footer">
-                    <img id="qr_code" src="http://chart.apis.google.com/chart?cht=qr&chs=90x90&chl=<?= $url . $invoice['id']; ?>" />
+                    <img id="qr_code" src="http://chart.apis.google.com/chart?cht=qr&amp;chs=90x90&amp;chl=<?= $url . $invoice['id']; ?>" alt="QR" />
                     <br />
                     <?= COMPANY ?>
                 </div>
@@ -246,7 +250,7 @@
                             <br />
                             <br />
                         </div>
-                    <table id="items" cellpadding="0" cellspacing="0">
+                    <table id="items">
                         <tr>
                             <th style="width:500px">
                                 Nimetus
@@ -336,7 +340,6 @@
                 </fieldset>
             </form>
 <?php } ?>
-            </div>
             </div>
         </div>
         <script type="text/javascript">
