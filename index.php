@@ -1,9 +1,16 @@
 <?php
 
-    define('DIR_INVOICES',      'invoices/');     //Invoices folder
-    define('EDIT_KEY',          'EE123');         //Secret string what allow edit invoices
-    define('TAX',               0.0);             //Tax rate
+    // *** CONFIGURATION START ***
 
+    define('DIR_INVOICES', 'invoices/');     //Invoices folder
+    define('EDIT_KEY',     'abc123');        //Secret string what allow edit invoices
+    define('TAX',          0.0);             //Tax rate
+    define('COMPANY',      '<b>Company LLC</b><br />Street, City<br /><b>IBAN:</b');             //Company info
+
+    // *** CONFIGURATION END ***
+
+
+    $url = 'http'. (isset($_SERVER['HTTPS']) ? 's' : '') .'://'. $_SERVER['HTTP_HOST'] .'/';
     $action = explode('/', array_shift(array_keys($_GET)));
     switch($action[0]) {
         case '':
@@ -11,19 +18,19 @@
             exit();
             break;
         case EDIT_KEY:
-            if($_POST['save'] == 'save_invoice') {
-                $invoice['customer']['name'] = $_POST['name'];
-                $invoice['customer']['address1'] = $_POST['address1'];
-                $invoice['customer']['address2'] = $_POST['address2'];
-                $invoice['invoice']['date'] = date('d.m.Y', strtotime($_POST['date']));
-                $invoice['invoice']['number'] = $_POST['number'];
-                foreach(array_keys($_POST['row_name']) as $key) {
-                    if($_POST['row_name'][$key]) {
-                        $sum = ((double) $_POST['row_qty'][$key] * (double) $_POST['row_price'][$key]);
+            if($_GET['save'] == 'save_invoice') {
+                $invoice['customer']['name'] = $_GET['name'];
+                $invoice['customer']['address1'] = $_GET['address1'];
+                $invoice['customer']['address2'] = $_GET['address2'];
+                $invoice['invoice']['date'] = date('d.m.Y', strtotime($_GET['date']));
+                $invoice['invoice']['number'] = $_GET['number'];
+                foreach(array_keys($_GET['row_name']) as $key) {
+                    if($_GET['row_name'][$key]) {
+                        $sum = ((double) $_GET['row_qty'][$key] * (double) $_GET['row_price'][$key]);
                         $invoice['items'][] = array(
-                            'name' => $_POST['row_name'][$key],
-                            'qty' => (int) $_POST['row_qty'][$key],
-                            'price' => (double) $_POST['row_price'][$key],
+                            'name' => $_GET['row_name'][$key],
+                            'qty' => (int) $_GET['row_qty'][$key],
+                            'price' => (double) $_GET['row_price'][$key],
                             'sum' => $sum
                         );
                         $invoice['invoice']['sum'] += $sum;
@@ -31,17 +38,13 @@
                     }
                 }
 				$invoice['invoice']['total'] = ($invoice['invoice']['sum'] + $invoice['invoice']['tax']);
-                $invoice['invoice']['payment_method'] = $_POST['payment_method'];
+                $invoice['invoice']['payment_method'] = $_GET['payment_method'];
                 $id = save_invoice($invoice, $action[1]);
-                header('Location: http://invoice.roots.ee/'. $id);
+                header('Location: '. $url . $id);
             } else {
                 $invoice = load_invoice($action[1]);
             }
             $edit = TRUE;
-            break;
-        case 'PDF':
-            $invoice = load_invoice($action[1]);
-            $print = TRUE;
             break;
         default:
             $invoice = load_invoice($action[0]);
@@ -50,7 +53,7 @@
 
     function load_invoice($id) {
         if(file_exists(DIR_INVOICES .$id)) {
-            $invoice = unserialize(file_get_contents(DIR_INVOICES .$id));
+            $invoice = json_decode(file_get_contents(DIR_INVOICES .$id), TRUE);
         } else {
             header("HTTP/1.0 404 Not Found");
             exit();
@@ -90,7 +93,7 @@
         } else {
             $invoice['file']['created'] = time();
         }
-        file_put_contents(DIR_INVOICES .$invoice['id'], serialize($invoice));
+        file_put_contents(DIR_INVOICES .$invoice['id'], json_encode($invoice, JSON_PRETTY_PRINT));
         return $invoice['id'];
     }
 
@@ -105,15 +108,16 @@
 
 ?>
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<!DOCTYPE html>
+<html lang="en">
     <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <meta charset="utf-8">
         <title><?= $invoice['invoice']['number'] ? 'Arve '. $invoice['invoice']['number'] : 'Arve'; ?></title>
         <style type="text/css" media="screen, print">
             html, body {
                 padding: 0px;
                 margin: 0px;
+                height: 100%;
                 font-family: 'Lucida Grande', Helvetica, Arial, Verdana, sans-serif;
                 font-size: 12px;
                 color: #000000;
@@ -121,7 +125,8 @@
             }
             #wrap {
                 width: 900px;
-                margin: <?= ($print == TRUE) ? '200' : '40'; ?>px auto 40px auto;;
+                margin: 0px auto 0px auto;
+                padding: 40px 0px 40px 0px;
             }
             #side h1 {
                 padding: 0px;
@@ -140,7 +145,9 @@
                 width: 170px;
             }
             #footer {
-                <?= ($print == TRUE) ? 'position: absolute; top: 1130px;' : 'bottom: 0px; position: fixed; padding-bottom: 10px;'; ?>
+                position: absolute;
+                bottom: 0px;
+                padding-bottom: 10px;
                 width: 900px;
                 overflow: hidden;
             }
@@ -163,7 +170,6 @@
                 white-space:nowrap;
             }
             #buttons {
-                <?= ($print == TRUE) ? 'display:none;' : ''; ?>
                 float: right;
             }
             #buttons a, #buttons span {
@@ -195,6 +201,9 @@
             }
         </style>
         <style type="text/css" media="print">
+            #wrap {
+                padding: 200px 0px 40px 0px;
+            }
             #buttons {
                 display:none;
             }
@@ -202,8 +211,7 @@
                 display:inline;
             }
         </style>
-        <script src="http://www.google.com/jsapi" type="text/javascript"></script>
-        <script type="text/javascript">google.load("jquery", "1");</script>
+         <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
     </head>
     <body>
         <div id="wrap">
@@ -212,39 +220,29 @@
                     ARVE
                 </h1>
                 <div id="footer">
-                    <img id="qr_code" src="http://chart.apis.google.com/chart?cht=qr&chs=90x90&chl=http://invoice.roots.ee/<?= $invoice['id']; ?>" />
+                    <img id="qr_code" src="http://chart.apis.google.com/chart?cht=qr&chs=90x90&chl=<?= $url . $invoice['id']; ?>" />
                     <br />
-                    <b>ROOTS &amp; POJAD TÜ</b><br />
-                    Nelgi 31-52, 11213 Talinn<br />
-                    +372 5663 0526<br />
-                    info@roots.ee<br />
-                    <br />
-                    Reg nr. 11369257<br />
-                    <br />
-                    a/a 221035716096
+                    <?= COMPANY ?>
                 </div>
             </div>
             <div id="main">
+<?php if($edit == TRUE) { ?>
                 <div id="buttons">
-<?php if($edit == TRUE) { ?>
                     <span id="add_row">Lisa rida</span> <span id="save">Salvesta</span>
-<?php } ?>
-                    <a target="_blank" href="http://pdfmyurl.com?url=http://invoice.roots.ee/<?= 'PDF/'. $invoice['id']; ?>&-O=Portrait&-s=A4&--filename=<?= $invoice['invoice']['number']; ?>">Salvesta PDF...</a>
                 </div>
-<?php if($edit == TRUE) { ?>
-                <form id="form" method="post" action="/<?= EDIT_KEY .'/'. $invoice['id']; ?>">
+                <form id="form" method="GET" action="/<?= EDIT_KEY .'/'. $invoice['id']; ?>">
                     <fieldset>
                         <input type="hidden" name="save" value="save_invoice" />
 <?php } ?>
                         <div id="info">
-                            Maksja:<br />
+                            <b>Maksja:</b><br />
                             <?= show_value('name', $invoice['customer']['name'], $edit, FALSE); ?><br />
                             <?= show_value('address1', $invoice['customer']['address1'], $edit, FALSE); ?><br />
                             <?= show_value('address2', $invoice['customer']['address2'], $edit, FALSE); ?><br />
                             <br />
                             <br />
-                            Kuupäev: <?= show_value('date', $invoice['invoice']['date'], $edit, FALSE); ?><br />
-                            Arve number: <?= show_value('number', $invoice['invoice']['number'], $edit, FALSE); ?><br />
+                            <b>Kuupäev:</b> <?= show_value('date', $invoice['invoice']['date'], $edit, FALSE); ?><br />
+                            <b>Arve number:</b> <?= show_value('number', $invoice['invoice']['number'], $edit, FALSE); ?><br />
                             <br />
                             <br />
                         </div>
